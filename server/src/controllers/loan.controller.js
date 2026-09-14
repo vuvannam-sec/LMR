@@ -1,10 +1,17 @@
 import { z } from 'zod';
 import * as loanService from '../services/loan.service.js';
+import { usernameSchema, barcodeSchema } from '../utils/validation.js';
 
 const checkoutSchema = z.object({
-  username: z.string().min(1),
-  barcode: z.string().min(1)
+  username: usernameSchema,
+  barcode: barcodeSchema
 });
+
+const checkinSchema = z.object({
+  condition: z.enum(['New', 'Good', 'Fair', 'Poor', 'Damaged']).default('Good')
+});
+
+const idSchema = z.string().regex(/^\d+$/, 'Invalid identifier');
 
 export async function checkout(req, res, next) {
   try {
@@ -28,7 +35,9 @@ export async function getAllLoans(req, res, next) {
 
 export async function checkin(req, res, next) {
   try {
-    const result = await loanService.checkin(req.params.id, req.user.userId);
+    const loanId = idSchema.parse(req.params.id);
+    const { condition } = checkinSchema.parse(req.body);
+    const result = await loanService.checkin(loanId, req.user.userId, condition);
     res.json(result);
   } catch (error) {
     next(error);
@@ -37,7 +46,8 @@ export async function checkin(req, res, next) {
 
 export async function renew(req, res, next) {
   try {
-    const loan = await loanService.renew(req.params.id, req.user.userId);
+    const loanId = idSchema.parse(req.params.id);
+    const loan = await loanService.renew(loanId, req.user.userId);
     res.json(loan);
   } catch (error) {
     next(error);

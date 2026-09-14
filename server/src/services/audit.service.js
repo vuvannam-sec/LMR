@@ -1,7 +1,7 @@
 import prisma from '../config/database.js';
 
-export async function log(data) {
-  await prisma.auditLog.create({
+export async function log(data, db = prisma) {
+  await db.auditLog.create({
     data: {
       userId: BigInt(data.userId),
       action: data.action,
@@ -14,15 +14,15 @@ export async function log(data) {
 
 export async function getLogs(filters = {}) {
   const where = {};
-  
+
   if (filters.userId) {
     where.userId = BigInt(filters.userId);
   }
-  
+
   if (filters.action) {
     where.action = filters.action;
   }
-  
+
   if (filters.startDate || filters.endDate) {
     where.createdAt = {};
     if (filters.startDate) {
@@ -32,7 +32,12 @@ export async function getLogs(filters = {}) {
       where.createdAt.lte = new Date(filters.endDate);
     }
   }
-  
+
+  const requestedLimit = Number.parseInt(filters.limit, 10);
+  const limit = Number.isFinite(requestedLimit)
+    ? Math.min(Math.max(requestedLimit, 1), 200)
+    : 100;
+
   return await prisma.auditLog.findMany({
     where,
     include: {
@@ -46,6 +51,6 @@ export async function getLogs(filters = {}) {
       }
     },
     orderBy: { createdAt: 'desc' },
-    take: filters.limit ? parseInt(filters.limit, 10) : 100
+    take: limit
   });
 }

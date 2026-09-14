@@ -1,26 +1,24 @@
 services:
   mysql:
     image: mysql:8.0
-    container_name: lms_mysql
     command: --default-time-zone=+07:00
     environment:
-      MYSQL_ROOT_PASSWORD: rootpass
-      MYSQL_DATABASE: lms_mvp
-      MYSQL_USER: lms
-      MYSQL_PASSWORD: lms123
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-local-root-only}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-lms_mvp}
+      MYSQL_USER: ${MYSQL_USER:-lms}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-local-lms-only}
     ports:
-      - "3307:3306"
+      - "${MYSQL_PORT:-3307}:3306"
     volumes:
       - lms_mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-prootpass"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
       interval: 5s
       timeout: 3s
       retries: 30
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:latest
-    container_name: lms_pma
     depends_on:
       mysql:
         condition: service_healthy
@@ -28,9 +26,9 @@ services:
       PMA_HOST: mysql
       PMA_PORT: 3306
       PMA_USER: root
-      PMA_PASSWORD: rootpass
+      PMA_PASSWORD: ${MYSQL_ROOT_PASSWORD:-local-root-only}
     ports:
-      - "8081:80"
+      - "${PMA_PORT:-8081}:80"
 
 volumes:
   lms_mysql_data:

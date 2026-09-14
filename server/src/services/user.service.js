@@ -4,26 +4,34 @@ import { NotFoundError, BadRequestError } from '../utils/errors.js';
 
 function getBorrowingLimit(membershipType) {
   const limits = {
-    'Student': 5,
-    'Faculty': 10,
-    'Public': 3
+    Student: 5,
+    Faculty: 10,
+    Public: 3
   };
   return limits[membershipType] || 3;
 }
 
 function generateMemberCode() {
-  const timestamp = Date.now().toString().slice(-6);
-  return `MEM2024${timestamp}`;
+  const year = new Date().getUTCFullYear();
+  const timestamp = Date.now().toString().slice(-8);
+  return `MEM${year}${timestamp}`;
 }
 
 function generateEmployeeId() {
-  const timestamp = Date.now().toString().slice(-6);
+  const timestamp = Date.now().toString().slice(-8);
   return `EMP${timestamp}`;
+}
+
+function stripPasswordHash(user) {
+  if (user && 'passwordHash' in user) {
+    delete user.passwordHash;
+  }
+  return user;
 }
 
 export async function getUsers(filters = {}) {
   const where = {};
-  
+
   if (filters.q) {
     where.OR = [
       { username: { contains: filters.q } },
@@ -32,15 +40,15 @@ export async function getUsers(filters = {}) {
       { lastName: { contains: filters.q } }
     ];
   }
-  
+
   if (filters.role) {
     where.role = filters.role;
   }
-  
+
   if (filters.status) {
     where.status = filters.status;
   }
-  
+
   return await prisma.user.findMany({
     where,
     select: {
@@ -58,7 +66,6 @@ export async function getUsers(filters = {}) {
 }
 
 export async function createUser(data) {
-  // Check if user exists
   const existing = await prisma.user.findFirst({
     where: {
       OR: [
@@ -67,15 +74,13 @@ export async function createUser(data) {
       ]
     }
   });
-  
+
   if (existing) {
     throw new BadRequestError('Username or email already exists');
   }
-  
-  // Hash password
+
   const passwordHash = await bcrypt.hash(data.password, 10);
-  
-  // Create user with role-specific profile
+
   const userData = {
     username: data.username,
     email: data.email,
@@ -87,18 +92,16 @@ export async function createUser(data) {
     phone: data.phone,
     address: data.address
   };
-  
-  // Add role-specific profile
+
   if (data.role === 'Member') {
     const borrowingLimit = getBorrowingLimit(data.membershipType);
-    const memberCode = generateMemberCode();
     const membershipDate = new Date();
     const expiryDate = new Date();
     expiryDate.setFullYear(expiryDate.getFullYear() + 1);
-    
+
     userData.member = {
       create: {
-        memberCode,
+        memberCode: generateMemberCode(),
         membershipType: data.membershipType,
         membershipDate,
         expiryDate,
@@ -121,7 +124,7 @@ export async function createUser(data) {
       }
     };
   }
-  
+
   const user = await prisma.user.create({
     data: userData,
     include: {
@@ -130,30 +133,28 @@ export async function createUser(data) {
       admin: true
     }
   });
-  
-  delete user.passwordHash;
-  return user;
+
+  return stripPasswordHash(user);
 }
 
 export async function updateUser(userId, data) {
   const user = await prisma.user.findUnique({
     where: { userId: BigInt(userId) }
   });
-  
+
   if (!user) {
     throw new NotFoundError('User not found');
   }
-  
+
   const updateData = {};
-  
-  if (data.role) updateData.role = data.role;
+
   if (data.status) updateData.status = data.status;
   if (data.firstName) updateData.firstName = data.firstName;
   if (data.lastName) updateData.lastName = data.lastName;
-  if (data.phone) updateData.phone = data.phone;
-  if (data.address) updateData.address = data.address;
-  
-  return await prisma.user.update({
+  if (data.phone !== undefined) updateData.phone = data.phone || null;
+  if (data.address !== undefined) updateData.address = data.address || null;
+
+  const updatedUser = await prisma.user.update({
     where: { userId: BigInt(userId) },
     data: updateData,
     include: {
@@ -162,6 +163,8 @@ export async function updateUser(userId, data) {
       admin: true
     }
   });
+
+  return stripPasswordHash(updatedUser);
 }
 
 export async function getUserWithProfile(userId) {
@@ -173,11 +176,10 @@ export async function getUserWithProfile(userId) {
       admin: true
     }
   });
-  
+
   if (!user) {
     throw new NotFoundError('User not found');
   }
-  
-  delete user.passwordHash;
-  return user;
+
+  return stripPasswordHash(user);
 }

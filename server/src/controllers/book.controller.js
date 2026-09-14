@@ -1,33 +1,46 @@
 import { z } from 'zod';
 import * as bookService from '../services/book.service.js';
+import {
+  isbnSchema,
+  barcodeSchema,
+  requiredText,
+  optionalText
+} from '../utils/validation.js';
+
+const currentYear = new Date().getUTCFullYear();
+const categoryIdSchema = z.union([
+  z.number().int().positive(),
+  z.string().regex(/^\d+$/, 'Category ID must be numeric')
+]).nullable().optional();
+
+const publicationYearSchema = z
+  .number()
+  .int()
+  .min(1000)
+  .max(currentYear + 1)
+  .nullable()
+  .optional();
 
 const createBookSchema = z.object({
-  isbn: z.string().min(10).max(20),
-  title: z.string().min(1).max(255),
-  author: z.string().min(1).max(255),
-  publisher: z.string().max(100).optional(),
-  publicationYear: z.number().int().optional(),
-  description: z.string().optional(),
-  language: z.string().max(30).optional(),
-  coverImage: z.string().max(255).optional(),
-  categoryId: z.string().optional()
+  isbn: isbnSchema,
+  title: requiredText(255),
+  author: requiredText(255),
+  publisher: optionalText(100),
+  publicationYear: publicationYearSchema,
+  description: optionalText(5000),
+  language: optionalText(30),
+  coverImage: z.union([z.string().url().max(255), z.literal('')]).optional(),
+  categoryId: categoryIdSchema
 });
 
-const updateBookSchema = z.object({
-  title: z.string().min(1).max(255).optional(),
-  author: z.string().min(1).max(255).optional(),
-  publisher: z.string().max(100).optional(),
-  publicationYear: z.number().int().optional(),
-  description: z.string().optional(),
-  language: z.string().max(30).optional(),
-  coverImage: z.string().max(255).optional(),
-  categoryId: z.string().optional()
-});
+const updateBookSchema = createBookSchema
+  .omit({ isbn: true })
+  .partial();
 
 const addCopySchema = z.object({
-  barcode: z.string().min(1).max(20),
+  barcode: barcodeSchema,
   condition: z.enum(['New', 'Good', 'Fair', 'Poor']).optional(),
-  locationCode: z.string().max(50).optional()
+  locationCode: optionalText(50)
 });
 
 export async function search(req, res, next) {
@@ -41,7 +54,8 @@ export async function search(req, res, next) {
 
 export async function getByISBN(req, res, next) {
   try {
-    const book = await bookService.getByISBN(req.params.isbn);
+    const isbn = isbnSchema.parse(req.params.isbn);
+    const book = await bookService.getByISBN(isbn);
     res.json(book);
   } catch (error) {
     next(error);
@@ -60,8 +74,9 @@ export async function create(req, res, next) {
 
 export async function update(req, res, next) {
   try {
+    const isbn = isbnSchema.parse(req.params.isbn);
     const data = updateBookSchema.parse(req.body);
-    const book = await bookService.update(req.params.isbn, data);
+    const book = await bookService.update(isbn, data);
     res.json(book);
   } catch (error) {
     next(error);
@@ -70,8 +85,9 @@ export async function update(req, res, next) {
 
 export async function addCopy(req, res, next) {
   try {
+    const isbn = isbnSchema.parse(req.params.isbn);
     const data = addCopySchema.parse(req.body);
-    const copy = await bookService.addCopy(req.params.isbn, data);
+    const copy = await bookService.addCopy(isbn, data);
     res.status(201).json(copy);
   } catch (error) {
     next(error);

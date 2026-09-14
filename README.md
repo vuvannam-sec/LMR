@@ -1,299 +1,207 @@
-# Library Management System (LMS) MVP
+# LMR — Library Management System
 
-A comprehensive library management system with role-based access control, built with Node.js, Express, Prisma, and MySQL.
+LMR is a small full-stack library management project built around a Node.js/Express API, Prisma, MySQL, and a browser-based JavaScript client. It covers the core circulation workflow: catalog search, member accounts, checkout/checkin, renewals, reservations, overdue fines, administration, and audit records.
 
-## Features
+The repository is intended as a development/reference project. It is not a production deployment template.
 
-### Guest Features
-- Browse book catalog
-- Search books by title, author, or ISBN
-- View book details and availability
-- Register as a member
+## What is implemented
 
-### Member Features
-- View active loans and due dates
-- Renew loans (up to 2 times)
-- Create and manage reservations
-- View and pay fines online
-- View borrowing history
+- Public catalog search and book details
+- Member registration and JWT-based login
+- Role hierarchy: Member, Librarian, Administrator
+- Checkout with a conditional copy-status update to reduce double-loan races
+- Checkin with overdue-fine calculation and reservation fulfillment
+- Copy condition tracking; damaged returns are moved to `Repair`
+- Member renewals, reservations, borrowing history, and fines
+- User/configuration administration
+- Audit records for circulation operations
+- MySQL + phpMyAdmin development stack through Docker Compose
 
-### Librarian Features
-- Checkout books to members
-- Checkin returned books
-- Calculate overdue fines automatically
-- Manage book catalog (add/edit books and copies)
-- Fulfill reservations on checkin
+The "Online" fine payment option records a simulated payment in the application database. No payment gateway is integrated. Reservation notifications are stored as notification records; no email provider is connected.
 
-### Administrator Features
-- Manage users (create, update roles and status)
-- Configure system settings
-- View audit logs
-- All librarian features
+## Stack
 
-## Tech Stack
+| Area | Technology |
+| --- | --- |
+| API | Node.js, Express |
+| Database | MySQL 8 |
+| ORM | Prisma |
+| Authentication | JWT, bcryptjs |
+| Validation | Zod |
+| Client | Vanilla JavaScript, Bootstrap 5 |
+| Local infrastructure | Docker Compose |
+| Tests | Vitest |
 
-### Backend
-- **Runtime**: Node.js with ES Modules
-- **Framework**: Express.js
-- **Database**: MySQL 8.0
-- **ORM**: Prisma
-- **Authentication**: JWT (jsonwebtoken)
-- **Validation**: Zod
-- **Password Hashing**: bcryptjs
+## Repository layout
 
-### Frontend
-- **UI**: Vanilla JavaScript with Bootstrap 5
-- **Icons**: Bootstrap Icons
-- **Styling**: Custom CSS with CSS Variables
-
-### Infrastructure
-- **Containerization**: Docker Compose
-- **Database Admin**: phpMyAdmin
-
-## Project Structure
-
-```
+```text
 .
+├── .github/workflows/ci.yml
+├── client/
+│   ├── index.html
+│   ├── app.js
+│   └── style.css
 ├── server/
 │   ├── prisma/
-│   │   ├── schema.prisma          # Database schema
-│   │   ├── seed.js                # Seed data script
-│   │   └── migrations/            # Database migrations
+│   │   ├── schema.prisma
+│   │   └── seed.js
 │   ├── src/
 │   │   ├── config/
-│   │   │   └── database.js        # Prisma client singleton
-│   │   ├── controllers/           # Request handlers
-│   │   ├── middleware/            # Auth, RBAC, error handling
-│   │   ├── routes/                # API routes
-│   │   ├── services/              # Business logic
-│   │   ├── utils/                 # Utilities (errors, bigint)
-│   │   ├── app.js                 # Express app setup
-│   │   └── index.js               # Server entry point
+│   │   ├── controllers/
+│   │   ├── middleware/
+│   │   ├── routes/
+│   │   ├── services/
+│   │   └── utils/
+│   ├── test/
+│   ├── .env.example
 │   └── package.json
-├── client/
-│   ├── index.html                 # Main HTML file
-│   ├── app.js                     # Frontend JavaScript
-│   └── style.css                  # Custom styles
-├── docker-compose.yml             # Docker services
-└── README.md
+├── .env.example
+└── docker-compose.yml
 ```
 
-## Setup Instructions
+## Local setup
 
-### Prerequisites
-- Docker and Docker Compose
-- Node.js 18+ (for local development)
+### Requirements
 
-### Quick Start
+- Node.js 18 or newer
+- npm
+- Docker with Docker Compose
 
-1. **Start Docker services**:
-   ```bash
-   docker compose up -d
-   ```
+### 1. Start MySQL
 
-2. **Install backend dependencies**:
-   ```bash
-   cd server
-   npm install
-   ```
+The Compose defaults are development-only values. Copy the root environment template if you want to override them.
 
-3. **Run database migration**:
-   ```bash
-   npx prisma migrate dev
-   ```
-
-4. **Seed database with demo data**:
-   ```bash
-   npm run db:seed
-   ```
-
-5. **Start backend server**:
-   ```bash
-   npm start
-   ```
-
-6. **Open frontend**:
-   - Open `client/index.html` in a web browser
-   - Or serve it with a simple HTTP server:
-     ```bash
-     cd client
-     python -m http.server 8080
-     ```
-   - Then visit: http://localhost:8080
-
-### Services
-
-- **Backend API**: http://localhost:3000
-- **phpMyAdmin**: http://localhost:8081
-- **MySQL**: localhost:3307
-
-## Demo Accounts
-
-### Administrator
-- **Username**: `admin`
-- **Password**: `Password123!`
-
-### Librarian
-- **Username**: `librarian1`
-- **Password**: `Password123!`
-
-### Member
-- **Username**: `member1`
-- **Password**: `Password123!`
-
-## API Endpoints
-
-### Authentication
-- `POST /api/auth/register` - Register new member
-- `POST /api/auth/login` - Login
-- `GET /api/auth/me` - Get current user (protected)
-- `POST /api/auth/logout` - Logout (protected)
-
-### Books (Public)
-- `GET /api/books` - Search books
-- `GET /api/books/:isbn` - Get book details with copies
-
-### Books (Librarian)
-- `POST /api/books` - Add new book
-- `PUT /api/books/:isbn` - Update book
-- `POST /api/books/:isbn/copies` - Add book copy
-
-### Loans
-- `POST /api/loans` - Checkout (Librarian)
-- `PUT /api/loans/:id/return` - Checkin (Librarian)
-- `PUT /api/loans/:id/renew` - Renew loan (Member)
-
-### Reservations
-- `POST /api/reservations` - Create reservation (Member)
-- `DELETE /api/reservations/:id` - Cancel reservation (Member)
-
-### Member Self-Service
-- `GET /api/me/loans` - Get my active loans
-- `GET /api/me/history` - Get my borrowing history
-- `GET /api/me/reservations` - Get my reservations
-- `GET /api/me/fines` - Get my fines
-
-### Fines
-- `POST /api/fines/:id/pay` - Pay fine (Member)
-
-### Admin
-- `GET /api/admin/users` - List users
-- `POST /api/admin/users` - Create user
-- `PUT /api/admin/users/:id` - Update user
-- `GET /api/admin/config` - Get system config
-- `PUT /api/admin/config/:key` - Update config
-- `GET /api/admin/audit-logs` - View audit logs
-
-## System Configuration
-
-The system has 5 configurable parameters:
-
-- `loan_period_days`: Default loan period (14 days)
-- `max_renewals`: Maximum renewals per loan (2)
-- `fine_rate_per_day`: Fine rate for overdue books (5000 VND/day)
-- `fine_block_threshold`: Fine threshold to block renewals (50000 VND)
-- `reservation_hold_days`: Days to hold reserved books (3 days)
-
-## Key Features Implementation
-
-### Race Condition Prevention
-Checkout uses conditional updates to prevent double-lending:
-```javascript
-const updateResult = await tx.bookCopy.updateMany({
-  where: { barcode, status: 'Available' },
-  data: { status: 'Loaned' }
-});
-if (updateResult.count === 0) {
-  throw new ConflictError('COPY_NOT_AVAILABLE');
-}
+```bash
+cp .env.example .env
+docker compose up -d
 ```
 
-### Automatic Fine Calculation
-Checkin automatically calculates overdue fines:
-```javascript
-const overdueDays = Math.max(0, Math.floor((returnDate - dueDate) / (1000 * 60 * 60 * 24)));
-if (overdueDays > 0) {
-  const amount = overdueDays * fineRate;
-  // Create fine record
-}
-```
+MySQL is exposed on `localhost:3307` by default. phpMyAdmin is available on `http://localhost:8081`.
 
-### Reservation Fulfillment
-When a book is returned, the system automatically fulfills the earliest pending reservation:
-```javascript
-const pendingReservations = await tx.reservation.findMany({
-  where: { isbn, status: 'Pending' },
-  orderBy: { reserveDate: 'asc' },
-  take: 1
-});
-if (pendingReservations.length > 0) {
-  // Fulfill reservation and set copy status to Reserved
-}
-```
+### 2. Configure the API
 
-### Role-Based Access Control
-RBAC middleware with role hierarchy:
-- Administrator > Librarian > Member
-- Ownership checks for member-specific endpoints
-
-### Audit Logging
-All critical operations (checkout, checkin) are logged:
-```javascript
-await auditService.log({
-  userId: librarianId,
-  action: 'CHECKOUT',
-  entityType: 'Loan',
-  entityId: loan.loanId.toString()
-});
-```
-
-## Database Schema
-
-### Core Tables
-- **User**: Base user table with role and status
-- **Member**: Member-specific data (member code, borrowing limit)
-- **Librarian**: Librarian-specific data (employee ID, department)
-- **Administrator**: Admin-specific data (admin level, permissions)
-- **Book**: Book metadata
-- **BookCopy**: Physical book copies with status
-- **Loan**: Loan records with due dates and renewals
-- **Reservation**: Book reservations
-- **Fine**: Overdue fines
-- **Payment**: Fine payments
-- **SystemConfig**: System configuration
-- **AuditLog**: Audit trail
-
-## Development
-
-### Run Tests
 ```bash
 cd server
-npm test
+cp .env.example .env
+npm install
 ```
 
-### Database Commands
+Replace `JWT_SECRET` in `server/.env` before starting the API. A convenient way to generate one is:
+
 ```bash
-# Generate Prisma client
-npx prisma generate
-
-# Create migration
-npx prisma migrate dev --name migration_name
-
-# Reset database
-npx prisma migrate reset
-
-# Open Prisma Studio
-npx prisma studio
+openssl rand -hex 32
 ```
+
+The server rejects the placeholder secret and secrets shorter than 32 characters.
+
+### 3. Prepare the database
+
+```bash
+npm run db:generate
+npm run db:push
+npm run db:seed
+```
+
+`db:push` is used for the current local bootstrap because this repository does not yet contain a committed SQL migration history. Future schema changes should be committed as Prisma migrations rather than relying on `db push` for deployed environments.
+
+### 4. Start the API
+
+```bash
+npm start
+```
+
+The API listens on `http://localhost:3000` by default. Health check:
+
+```text
+GET http://localhost:3000/health
+```
+
+### 5. Serve the client
+
+From the repository root:
+
+```bash
+cd client
+python -m http.server 8080
+```
+
+Open `http://localhost:8080`.
+
+## Development accounts
+
+`npm run db:seed` creates local demo accounts. They all use the development password `Password123!`.
+
+| Role | Username |
+| --- | --- |
+| Administrator | `admin` |
+| Librarian | `librarian1` |
+| Member | `member1` |
+
+These are seed credentials, not application secrets. Do not expose a seeded database or reuse these credentials outside local development.
+
+## API overview
+
+| Area | Routes |
+| --- | --- |
+| Authentication | `/api/auth/*` |
+| Catalog | `/api/books/*` |
+| Loans | `/api/loans/*` |
+| Reservations | `/api/reservations/*` |
+| Member self-service | `/api/me/*` |
+| Fines | `/api/fines/*` |
+| Administration | `/api/admin/*` |
+
+Protected routes expect an access token in the `Authorization` header:
+
+```text
+Authorization: Bearer <token>
+```
+
+## Configuration
+
+The seeded database contains these operational settings:
+
+| Key | Default | Meaning |
+| --- | ---: | --- |
+| `loan_period_days` | 14 | Loan duration |
+| `max_renewals` | 2 | Maximum renewals per loan |
+| `fine_rate_per_day` | 5000 | Overdue fine per day, VND |
+| `fine_block_threshold` | 50000 | Unpaid-fine threshold that blocks renewal |
+| `reservation_hold_days` | 3 | Reservation pickup window |
+
+Runtime configuration belongs in `server/.env`. See `server/.env.example` for the supported variables.
+
+## Checks
+
+From `server/`:
+
+```bash
+npm test
+npm run check
+npm run db:validate
+```
+
+The GitHub Actions workflow runs the same backend checks for pull requests.
+
+## Security notes
+
+- Real `.env` files are ignored by Git.
+- The API requires a non-placeholder JWT secret of at least 32 characters.
+- CORS origins are explicitly configurable through `CORS_ORIGINS`.
+- Request bodies are size-limited and common security headers are set by the API.
+- Persisted text/identifier inputs used by the current client are validated to reject markup or unsafe identifier characters.
+- Demo database credentials and demo user passwords are for local development only.
+
+For vulnerability reports, see [SECURITY.md](SECURITY.md).
+
+## Current limitations
+
+This project deliberately stays small. Items not currently provided include production deployment manifests, refresh-token/session revocation, real payment processing, outbound email delivery, and a committed database migration history. The browser client also stores its bearer token in `localStorage`, which is acceptable for this demo but should be reconsidered for a production-facing application.
+
+## Contributing
+
+Small, reviewable changes are preferred. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-MIT
-
-## Contributors
-
-Built as an MVP for library management with focus on:
-- Correctness (transaction safety, race condition prevention)
-- Security (JWT auth, RBAC, password hashing)
-- Usability (intuitive UI, role-based dashboards)
-- Maintainability (clean architecture, separation of concerns)
+MIT. See [LICENSE](LICENSE).
