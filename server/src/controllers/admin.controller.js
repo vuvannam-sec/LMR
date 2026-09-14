@@ -20,6 +20,14 @@ const createUserSchema = z.object({
   hireDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD').optional(),
   adminLevel: z.number().int().min(1).max(10).optional(),
   permissions: optionalText(255)
+}).superRefine((data, ctx) => {
+  if (data.role === 'Member' && !data.membershipType) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['membershipType'],
+      message: 'membershipType is required for members'
+    });
+  }
 });
 
 const updateUserSchema = z.object({
@@ -34,6 +42,8 @@ const updateUserSchema = z.object({
 const updateConfigSchema = z.object({
   value: z.string().trim().min(1).max(32).regex(/^\d+(?:\.\d+)?$/, 'Configuration value must be numeric')
 });
+
+const idSchema = z.string().regex(/^\d+$/, 'Invalid identifier');
 
 export async function getUsers(req, res, next) {
   try {
@@ -56,8 +66,9 @@ export async function createUser(req, res, next) {
 
 export async function updateUser(req, res, next) {
   try {
+    const userId = idSchema.parse(req.params.id);
     const data = updateUserSchema.parse(req.body);
-    const user = await userService.updateUser(req.params.id, data);
+    const user = await userService.updateUser(userId, data);
     res.json(user);
   } catch (error) {
     next(error);
