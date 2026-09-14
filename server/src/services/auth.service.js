@@ -1,26 +1,27 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../config/database.js';
+import { env } from '../config/env.js';
 import { BadRequestError, UnauthorizedError, NotFoundError } from '../utils/errors.js';
 
 function getBorrowingLimit(membershipType) {
   const limits = {
-    'Student': 5,
-    'Faculty': 10,
-    'Public': 3
+    Student: 5,
+    Faculty: 10,
+    Public: 3
   };
   return limits[membershipType] || 3;
 }
 
 function generateMemberCode() {
-  const timestamp = Date.now().toString().slice(-6);
-  return `MEM2024${timestamp}`;
+  const year = new Date().getUTCFullYear();
+  const timestamp = Date.now().toString().slice(-8);
+  return `MEM${year}${timestamp}`;
 }
 
 export async function register(data) {
   const { username, email, password, firstName, lastName, membershipType } = data;
 
-  // Check if user exists
   const existing = await prisma.user.findFirst({
     where: {
       OR: [
@@ -34,10 +35,7 @@ export async function register(data) {
     throw new BadRequestError('Username or email already exists');
   }
 
-  // Hash password
   const passwordHash = await bcrypt.hash(password, 10);
-
-  // Create user with member profile
   const borrowingLimit = getBorrowingLimit(membershipType);
   const memberCode = generateMemberCode();
   const membershipDate = new Date();
@@ -68,16 +66,13 @@ export async function register(data) {
     }
   });
 
-  // Remove passwordHash from response
   delete user.passwordHash;
-
   return { user };
 }
 
 export async function login(credentials) {
   const { usernameOrEmail, password } = credentials;
 
-  // Find user
   const user = await prisma.user.findFirst({
     where: {
       OR: [
@@ -91,35 +86,33 @@ export async function login(credentials) {
     throw new UnauthorizedError('Invalid credentials');
   }
 
-  // Verify password
   const isValid = await bcrypt.compare(password, user.passwordHash);
   if (!isValid) {
     throw new UnauthorizedError('Invalid credentials');
   }
 
-  // Check status
   if (user.status !== 'Active') {
     throw new UnauthorizedError('Account is not active');
   }
 
-  // Update last login
   await prisma.user.update({
     where: { userId: user.userId },
     data: { lastLogin: new Date() }
   });
 
-  // Generate JWT
   const token = jwt.sign(
     {
       userId: user.userId.toString(),
       role: user.role
     },
-    process.env.JWT_SECRET,
-    { expiresIn: '24h' }
+    env.JWT_SECRET,
+    {
+      algorithm: 'HS256',
+      expiresIn: env.JWT_EXPIRES_IN,
+      issuer: 'lmr-api',
+      audience: 'lmr-web'
+    }
   );
-
-  // Remove passwordHash from response
-  delete user.passwordHash;
 
   return {
     accessToken: token,
