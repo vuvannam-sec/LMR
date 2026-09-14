@@ -1,12 +1,8 @@
-# Kiro IDE
-.kiro/
-
 # Dependencies
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
 
 # Environment variables
 .env
@@ -14,6 +10,9 @@ package-lock.json
 .env.development.local
 .env.test.local
 .env.production.local
+.env.*
+!.env.example
+!**/.env.example
 
 # Database
 *.db
@@ -29,9 +28,10 @@ logs/
 Thumbs.db
 desktop.ini
 
-# IDE
+# IDE / local tooling
 .vscode/
 .idea/
+.kiro/
 *.swp
 *.swo
 *~
@@ -45,11 +45,7 @@ build/
 out/
 *.tsbuildinfo
 
-# Prisma
-server/prisma/migrations/*_*
-!server/prisma/migrations/migration_lock.toml
-
-# Docker
+# Docker local overrides
 docker-compose.override.yml
 
 # Temporary files
@@ -61,12 +57,10 @@ temp/
 coverage/
 .nyc_output/
 
-# Testing
+# Test/tool caches
 .jest/
-
-# Misc
 .cache/
 .parcel-cache/
 .next/
 .nuxt/
-.vercel
+.vercel/
