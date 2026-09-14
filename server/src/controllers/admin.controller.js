@@ -31,13 +31,12 @@ const createUserSchema = z.object({
 });
 
 const updateUserSchema = z.object({
-  role: z.enum(['Member', 'Librarian', 'Administrator']).optional(),
   status: z.enum(['Active', 'Inactive', 'Locked', 'Pending']).optional(),
   firstName: requiredText(50).optional(),
   lastName: requiredText(50).optional(),
   phone: z.string().trim().max(20).regex(/^[0-9+(). -]*$/, 'Invalid phone number').optional(),
   address: optionalText(255)
-});
+}).strict();
 
 const updateConfigSchema = z.object({
   value: z.string().trim().min(1).max(32).regex(/^\d+(?:\.\d+)?$/, 'Configuration value must be numeric')
